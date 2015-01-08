@@ -13,7 +13,7 @@ exports.headers = headers = {
 exports.sendResponse = function(res, data, status) {
   status = status || 200;
   res.writeHead(status, exports.headers);
-  res.end(JSON.stringify(data));
+  res.end(data);
 }
 
 // asset = url.parse(req.url).pathname
@@ -52,6 +52,33 @@ exports.collectData = function(request, callback) {
     callback(data);
   })
 }
+
+exports.writeAsset = function(request, response){
+  exports.collectData(request, function(dataUrl){
+    var parsedUrl = dataUrl.split("=")[1] + "\n";
+    // TEST URL
+    var testUrl = dataUrl.split("=")[1];
+
+    if(!archive.isUrlInList(parsedUrl)){
+      archive.addUrlToList(parsedUrl);
+      response.setHeader('Location', '/loading.html');
+      exports.sendResponse(response, "url added to list", 302);
+
+      // BE SURE TO TAKE THIS OUT. need to put into htmlfetcher
+      archive.downloadUrls(testUrl);
+
+    } else {
+      exports.sendResponse(response, "url already in list", 404);
+    }
+  });
+}
+
+// exports.redirect = function(request, response, location){
+
+//   response.setHeader('Location', location);
+//   response.writeHead(302, {"Location" : "/loading.html"})
+//   response.end()
+// }
 
 
 
