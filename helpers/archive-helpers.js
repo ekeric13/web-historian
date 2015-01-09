@@ -1,8 +1,7 @@
 var fs = require('fs');
 var path = require('path');
+var request = require('request');
 var _ = require('underscore');
-var httpRequest = require('http-request');
-var util = require("util")
 
 /*
  * You will need to reuse the same paths many times over in the course of this sprint.
@@ -24,53 +23,36 @@ exports.initialize = function(pathsObj){
   });
 };
 
-// The following function names are provided to you to suggest how you might
-// modularize your code. Keep it clean!
 
 exports.readListOfUrls = function(callback){
-    var callbackSave = callback;
-    console.log('readlistofurls this: ', this);
-  fs.readFile(exports.paths.list, {encoding:'utf8'}, function(err, data){
-    if (err){
-      // return (callback) ? callback(err) : console.log(err);;
-    } else {
-        console.log('inside read file', this);
-      return (this.test) ? this.test(data.toString().split('\n')) : data.toString().split('\n');
+  fs.readFile(exports.paths.list, function(err, sites) {
+    sites = sites.toString().split('\n');
+    if( callback ){
+      callback(sites);
     }
-  }.bind(this));
+  });
 };
 
-// Is url in list function not working it seems...
-exports.isUrlInList = function(url, callbackFirst){
-  //maybe return?
-  var truthy = false;
-  console.log("type of callback "+ (typeof callbackFirst))
-  console.log("callback in isURLInLIst: ", callbackFirst);
-  console.log("here is url in archives "+ url)
-
-  var callbackFirstSave = {test: callbackFirst};
-
-  exports.readListOfUrls(function(array){
-      console.log('callback in anonymous function: ', callbackFirstSave);
-    console.log(array, url.toString(), _.contains(array, 'www.yahoo.com'));
-    truthy = _.contains(array, url);
-    this.test(truthy);
-  }.bind(callbackFirstSave));
-
-  // callback(truthy);
+exports.isUrlInList = function(url, callback){
+  exports.readListOfUrls(function(sites) {
+    var found = _.any(sites, function(site, i) {
+      return site.match(url)
+    });
+    callback(found);
+  });
 };
 
-exports.addUrlToList = function(url){
-  fs.appendFile(exports.paths.list, url.toString() + "\n");
+exports.addUrlToList = function(url, callback){
+  fs.appendFile(exports.paths.list, url+'\n', function(err, file){
+    callback();
+  });
 };
 
-exports.isURLArchived = function(url){
-  fs.readFile(exports.paths.archivedSites + /*'/' + */ url, {encoding :'utf8'}, function(err, data){
-    if(err){
-      return false;
-    } else {
-      return true;
-    }
+exports.isURLArchived = function(url, callback){
+  var sitePath =  path.join(exports.paths.archivedSites, url);
+
+  fs.exists(sitePath, function(exists) {
+    callback(exists);
   });
 };
 

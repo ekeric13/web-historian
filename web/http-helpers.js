@@ -1,7 +1,7 @@
 var path = require('path');
 var fs = require('fs');
 var archive = require('../helpers/archive-helpers');
-var util = require("util");
+var Q = require('q');
 
 exports.headers = headers = {
   "access-control-allow-origin": "*",
@@ -11,93 +11,114 @@ exports.headers = headers = {
   'Content-Type': "text/html"
 };
 
-exports.sendResponse = function(res, data, status) {
-  status = status || 200;
-  res.writeHead(status, exports.headers);
-  res.end(data);
-}
-
-// asset = url.parse(req.url).pathname
 exports.serveAssets = function(res, asset, callback) {
+
+  var encoding = {encoding: 'utf8'};
+  var readFile = Q.denodeify(fs.readFile);
+
+  readFile(archive.paths.siteAssets + asset, encoding)
+    .then(function(contents) {
+      contents && exports.sendResponse(res, contents);
+    }, function(err) {
+      return readFile(archive.paths.archivedSites + asset, encoding);
+    })
+    .then(function(contents) {
+      contents && exports.sendResponse(res, contents);
+    }, function(err) {
+      callback ? callback() : exports.send404(res);
+    });
+  };
+
+
+// SOLUTION LECTURE NOTES
+// 3 possible solutions below
+// - node callback
+// - promises
+// - advanced promises
+exports.serveAssetsCB = function(res, asset, callback) {
   // Write some code here that helps serve up your static files!
-  // console.log("Asset "+ asset);
-  if (asset === "/"){
-    asset = "/index.html"
-  }
-  var path = archive.paths.siteAssets + asset;
-  // console.log("path "+ path);
-  var encoding = {encoding:'utf8'};
-  fs.readFile(path, encoding, function(err,data){
+  // (Static files are things like html (yours or archived from others...), css, or anything that doesn't change often.)
+  var encoding = {encoding: 'utf8'};
+  fs.readFile( archive.paths.siteAssets + asset, encoding, function(err, data){
     if(err){
-      // console.log("data stored path "+ path)
-      path = archive.paths.archivedSites + asset
-      fs.readFile(path, encoding, function(err, data){
-        if (err){
-          callback() ? callback() : exports.sendResponse(res, err, 404);
+      // file doesn't exist in public!
+      fs.readFile( archive.paths.archivedSites + asset, encoding, function(err, data){
+        if(err){
+          // file doesn't exist in archive!
+          callback ? callback() : exports.send404(res);
         } else {
-          exports.sendResponse(res, data, 200);
+          exports.sendResponse(res, data);
         }
-      })
+      });
     } else {
-      exports.sendResponse(res, data, 200);
+      exports.sendResponse(res, data);
     }
   })
 };
 
-exports.collectData = function(request, callback) {
+exports.serveAssetsQ1 = function(res, asset, callback) {
+  var encoding = {encoding: 'utf8'};
+  var readFile = Q.denodeify(fs.readFile);
+
+  readFile(archive.paths.siteAssets + asset, encoding)
+    .then(function(contents) {
+      contents && exports.sendResponse(res, contents);
+    }, function(err) {
+      return readFile(archive.paths.archivedSites + asset, encoding);
+    })
+    .then(function(contents) {
+      contents && exports.sendResponse(res, contents);
+    }, function(err) {
+      callback ? callback() : exports.send404(res);
+    });
+};
+
+exports.serveAssetsQ2 = function(res, asset, callback) {
+  var encoding = {encoding: 'utf8'};
+  var readFile = Q.denodeify(fs.readFile);
+
+  var assetPaths = [
+    archive.paths.siteAssets,
+    archive.paths.archivedSites
+  ];
+
+  var sendAsset = function(paths){
+    return readFile(paths.pop()+asset, encoding)
+      .then(function(contents) {
+        return exports.sendResponse(res, contents);
+      })
+      .catch(function(err) {
+        return paths.length ? sendAsset(paths) :
+              (callback ? callback() : exports.send404(res));
+      });
+  }
+
+  return sendAsset(assetPaths);
+};
+
+
+exports.sendRedirect = function(response, location, status){
+  status = status || 302;
+  response.writeHead(status, {Location: location});
+  response.end();
+};
+
+exports.sendResponse = function(response, obj, status){
+  status = status || 200;
+  response.writeHead(status, headers);
+  response.end(obj);
+};
+
+exports.collectData = function(request, callback){
   var data = "";
-  request.on('data', function(chunk){
+  request.on("data", function(chunk){
     data += chunk;
   });
-  request.on('end', function(){
+  request.on("end", function(){
     callback(data);
-  })
-}
-
-exports.redirect = function(res, data, statusCode){
-  status = statusCode || 302;
-
-  res.setHeader('Location', '/loading.html');
-  res.writeHead(status, exports.headers);
-  res.end(data);
-}
-
-exports.writeAsset = function(request, response){
-  exports.collectData(request, function(dataUrl){
-    // is URL IN list?
-      // if not add it with addurltosites. if it is is it archived?
-        // if not archive and redirect to the site. if it is redirect to loading.
-    var parsedUrl = dataUrl.split("=")[1];
-    parsedUrl = parsedUrl.replace('http://', '');
-    // TEST URL
-    var testUrl = dataUrl.split("=")[1];
-    // console.log("parsed url "+parsedUrl);
-    var x = archive.isUrlInList(parsedUrl);
-    console.log(x+ " is parsed url in list?");
-    console.log("here is the url "+ parsedUrl)
-
-    archive.isUrlInList(parsedUrl, function(bool){
-      if (bool){
-        exports.sendResponse(response, "url already in list", 404);
-      } else {
-        archive.addUrlToList(parsedUrl);
-        exports.redirect(response, "url added to list", 302);
-        // BE SURE TO TAKE THIS OUT. need to put into htmlfetcher. should be a chron job
-        archive.downloadUrls(parsedUrl);
-      }
-    })
-    // if(x){
-    //   exports.sendResponse(response, "url already in list", 404);
-    // } else {
-    //   archive.addUrlToList(parsedUrl);
-    //   exports.redirect(response, "url added to list", 302);
-    //   // BE SURE TO TAKE THIS OUT. need to put into htmlfetcher. should be a chron job
-    //   archive.downloadUrls(testUrl);
-    // }
   });
+};
+
+exports.send404 = function(response){
+  exports.sendResponse(response, '404: Page not found', 404);
 }
-
-
-
-
-// As you progress, keep thinking about what helper functions you can put here!
