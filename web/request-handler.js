@@ -8,7 +8,10 @@ var url = require("url")
 var actions = {
   "GET" : function(request, response){
     var path = url.parse(request.url).pathname;
-    httpHelpers.serveAssets(response, path);
+    httpHelpers.serveAssets(response, path, function(){
+      // if (path[0] === "/") { path = path.slice(1)}
+        // check to see if in urlList
+    });
   },
   "POST" : function(request, response){
     httpHelpers.writeAsset(request, response);

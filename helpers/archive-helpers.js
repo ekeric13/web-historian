@@ -35,7 +35,7 @@ exports.readListOfUrls = function(callback){
       // return (callback) ? callback(err) : console.log(err);;
     } else {
         console.log('inside read file', this);
-      return (this.test) ? this.test(data.toString().split('\n')) : data.split('\n');
+      return (this.test) ? this.test(data.toString().split('\n')) : data.toString().split('\n');
     }
   }.bind(this));
 };
@@ -53,7 +53,7 @@ exports.isUrlInList = function(url, callbackFirst){
   exports.readListOfUrls(function(array){
       console.log('callback in anonymous function: ', callbackFirstSave);
     console.log(array, url.toString(), _.contains(array, 'www.yahoo.com'));
-    truthy = _.contains(array, url.toString());
+    truthy = _.contains(array, url);
     this.test(truthy);
   }.bind(callbackFirstSave));
 

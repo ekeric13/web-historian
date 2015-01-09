@@ -14,7 +14,7 @@ exports.headers = headers = {
 exports.sendResponse = function(res, data, status) {
   status = status || 200;
   res.writeHead(status, exports.headers);
-  res.end(data.toString());
+  res.end(data);
 }
 
 // asset = url.parse(req.url).pathname
@@ -33,7 +33,7 @@ exports.serveAssets = function(res, asset, callback) {
       path = archive.paths.archivedSites + asset
       fs.readFile(path, encoding, function(err, data){
         if (err){
-          exports.sendResponse(res, err, 404);
+          callback() ? callback() : exports.sendResponse(res, err, 404);
         } else {
           exports.sendResponse(res, data, 200);
         }
