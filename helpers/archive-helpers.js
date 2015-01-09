@@ -56,19 +56,22 @@ exports.isURLArchived = function(url, callback){
   });
 };
 
-exports.downloadUrls = function(url){
-  httpRequest.get(url, exports.paths.archivedSites + '/' + url, function (err, res) {
-  if (err) {
-    console.error(err);
-    return;
-  }
-    // var fd = fs.open(exports.paths.archivedSites + url, "w");
-    // fs.close(fd);
+exports.downloadUrls = function(){
 
-    // // Write data to the file.
-    // fs.writeFile(exports.paths.archivedSites + url, res, {encoding:'utf-8'});
+  exports.readListOfUrls(function(url){
+    httpRequest.get("http://" + url, exports.paths.archivedSites + '/' + url, function (err, res) {
+    if (err) {
+      console.error(err);
+      return;
+    }
+      // var fd = fs.open(exports.paths.archivedSites + url, "w");
+      // fs.close(fd);
 
-  });
+      // // Write data to the file.
+      // fs.writeFile(exports.paths.archivedSites + url, res, {encoding:'utf-8'});
+
+    });
+  })
 };
 
 
