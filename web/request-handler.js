@@ -12,7 +12,6 @@ var actions = {
   },
   "POST" : function(request, response){
     httpHelpers.writeAsset(request, response);
-
   }
 
 }

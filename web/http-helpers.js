@@ -1,6 +1,7 @@
 var path = require('path');
 var fs = require('fs');
 var archive = require('../helpers/archive-helpers');
+var util = require("util");
 
 exports.headers = headers = {
   "access-control-allow-origin": "*",
@@ -13,7 +14,7 @@ exports.headers = headers = {
 exports.sendResponse = function(res, data, status) {
   status = status || 200;
   res.writeHead(status, exports.headers);
-  res.end(data);
+  res.end(data.toString());
 }
 
 // asset = url.parse(req.url).pathname
@@ -53,32 +54,48 @@ exports.collectData = function(request, callback) {
   })
 }
 
-exports.writeAsset = function(request, response){
-  exports.collectData(request, function(dataUrl){
-    var parsedUrl = dataUrl.split("=")[1] + "\n";
-    // TEST URL
-    var testUrl = dataUrl.split("=")[1];
+exports.redirect = function(res, data, statusCode){
+  status = statusCode || 302;
 
-    if(!archive.isUrlInList(parsedUrl)){
-      archive.addUrlToList(parsedUrl);
-      response.setHeader('Location', '/loading.html');
-      exports.sendResponse(response, "url added to list", 302);
-
-      // BE SURE TO TAKE THIS OUT. need to put into htmlfetcher
-      archive.downloadUrls(testUrl);
-
-    } else {
-      exports.sendResponse(response, "url already in list", 404);
-    }
-  });
+  res.setHeader('Location', '/loading.html');
+  res.writeHead(status, exports.headers);
+  res.end(data);
 }
 
-// exports.redirect = function(request, response, location){
+exports.writeAsset = function(request, response){
+  exports.collectData(request, function(dataUrl){
+    // is URL IN list?
+      // if not add it with addurltosites. if it is is it archived?
+        // if not archive and redirect to the site. if it is redirect to loading.
+    var parsedUrl = dataUrl.split("=")[1];
+    parsedUrl = parsedUrl.replace('http://', '');
+    // TEST URL
+    var testUrl = dataUrl.split("=")[1];
+    // console.log("parsed url "+parsedUrl);
+    var x = archive.isUrlInList(parsedUrl);
+    console.log(x+ " is parsed url in list?");
+    console.log("here is the url "+ parsedUrl)
 
-//   response.setHeader('Location', location);
-//   response.writeHead(302, {"Location" : "/loading.html"})
-//   response.end()
-// }
+    archive.isUrlInList(parsedUrl, function(bool){
+      if (bool){
+        exports.sendResponse(response, "url already in list", 404);
+      } else {
+        archive.addUrlToList(parsedUrl);
+        exports.redirect(response, "url added to list", 302);
+        // BE SURE TO TAKE THIS OUT. need to put into htmlfetcher. should be a chron job
+        archive.downloadUrls(parsedUrl);
+      }
+    })
+    // if(x){
+    //   exports.sendResponse(response, "url already in list", 404);
+    // } else {
+    //   archive.addUrlToList(parsedUrl);
+    //   exports.redirect(response, "url added to list", 302);
+    //   // BE SURE TO TAKE THIS OUT. need to put into htmlfetcher. should be a chron job
+    //   archive.downloadUrls(testUrl);
+    // }
+  });
+}
 
 
 

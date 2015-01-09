@@ -28,28 +28,40 @@ exports.initialize = function(pathsObj){
 // modularize your code. Keep it clean!
 
 exports.readListOfUrls = function(callback){
+    var callbackSave = callback;
+    console.log('readlistofurls this: ', this);
   fs.readFile(exports.paths.list, {encoding:'utf8'}, function(err, data){
     if (err){
-
       // return (callback) ? callback(err) : console.log(err);;
     } else {
-      return (callback) ? callback(data.split('\n')) : data.split('\n');
+        console.log('inside read file', this);
+      return (this.test) ? this.test(data.toString().split('\n')) : data.split('\n');
     }
-  });
+  }.bind(this));
 };
 
-exports.isUrlInList = function(url){
+// Is url in list function not working it seems...
+exports.isUrlInList = function(url, callbackFirst){
+  //maybe return?
+  var truthy = false;
+  console.log("type of callback "+ (typeof callbackFirst))
+  console.log("callback in isURLInLIst: ", callbackFirst);
+  console.log("here is url in archives "+ url)
+
+  var callbackFirstSave = {test: callbackFirst};
+
   exports.readListOfUrls(function(array){
-    if(_.indexOf(array, url) === -1){
-      return false
-    } else {
-      return true;
-    }
-  });
+      console.log('callback in anonymous function: ', callbackFirstSave);
+    console.log(array, url.toString(), _.contains(array, 'www.yahoo.com'));
+    truthy = _.contains(array, url.toString());
+    this.test(truthy);
+  }.bind(callbackFirstSave));
+
+  // callback(truthy);
 };
 
 exports.addUrlToList = function(url){
-  fs.writeFile(exports.paths.list,url, {encoding: "utf8"});
+  fs.appendFile(exports.paths.list, url.toString() + "\n");
 };
 
 exports.isURLArchived = function(url){
@@ -63,18 +75,17 @@ exports.isURLArchived = function(url){
 };
 
 exports.downloadUrls = function(url){
-  httpRequest.get(url, function (err, res) {
+  httpRequest.get(url, exports.paths.archivedSites + '/' + url, function (err, res) {
   if (err) {
     console.error(err);
     return;
   }
-    var fd = fs.open(exports.paths.archivedSites + url, "w");
-    fs.close(fd);
+    // var fd = fs.open(exports.paths.archivedSites + url, "w");
+    // fs.close(fd);
 
-    // Write data to the file.
-    fs.writeFile(exports.paths.archivedSites + url, res, {encoding:'utf-8'});
+    // // Write data to the file.
+    // fs.writeFile(exports.paths.archivedSites + url, res, {encoding:'utf-8'});
 
-    console.log(res.buffer.toString() /*res.code, res.headers, res.buffer.toString()*/);
   });
 };
 
